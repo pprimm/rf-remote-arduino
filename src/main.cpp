@@ -19,16 +19,16 @@
 volatile unsigned char state = IDLE;
 volatile unsigned char isrBytes[BYTE_COUNT];
 volatile unsigned char byteIndex = 0;
-volatile int bitCount = 0;
+volatile unsigned char bitCount = 0;
 /*******************************************************************************
  * ISR for input change event
 *******************************************************************************/
 volatile unsigned char input;
 volatile unsigned char bitLevel;
-static unsigned long oldTime = 0;
-static unsigned long newTime;
-static unsigned long tDiff;
-volatile unsigned char bitIndex = 0;
+volatile unsigned long oldTime;
+volatile unsigned long newTime;
+volatile unsigned long tDiff;
+volatile unsigned char bitIndex;
 void inputChange()
 {
   input = digitalRead(INPUT_PIN);
@@ -77,6 +77,7 @@ void setup()
   Serial.println("Running");
   pinMode(INPUT_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), inputChange, CHANGE);
+  oldTime = micros();
 }
 
 void printByte(unsigned char bytePrint) {
@@ -89,17 +90,10 @@ void printByte(unsigned char bytePrint) {
 
 void printButton()
 {
-  /*Serial.print(bitCount,DEC);
-  Serial.print(" ");
-  Serial.print(byteIndex,DEC);
-  Serial.print(" ");*/
   for (int i = 0;i <= byteIndex && i < BYTE_COUNT;++i) {
     printByte(isrBytes[i]);
     Serial.print(" ");
   }
-  //Serial.print(isrBytes[7],BIN);
-  //Serial.print(isrBytes[8],BIN);
-  //Serial.print(isrBytes[9],BIN);
   Serial.println();
 }
 
