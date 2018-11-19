@@ -10,7 +10,7 @@
 #define DT_T1 300
 #define DT_T2 600
 #define DT_T3 1600
-#define BYTE_COUNT 10
+#define BYTE_COUNT 12
 
 
 /**
@@ -56,6 +56,7 @@ void inputChange()
       ++bitCount;
       byteIndex = bitCount / 8;
       bitIndex = bitCount % 8;
+      //isrBytes[byteIndex] |= bitLevel << (8 - bitIndex);
       isrBytes[byteIndex] |= bitLevel << bitIndex;
       break;
     case END:
@@ -78,16 +79,27 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), inputChange, CHANGE);
 }
 
+void printByte(unsigned char bytePrint) {
+  //for (unsigned char bitPos = 0x80; bitPos; bitPos >>= 1) {
+  //  Serial.write(bytePrint & bitPos ? '1' : '0');
+  //}
+  Serial.print(bytePrint >> 4,HEX);
+  Serial.print(bytePrint & 0x0F,HEX);
+}
+
 void printButton()
 {
-  Serial.print(bitCount,DEC);
+  /*Serial.print(bitCount,DEC);
   Serial.print(" ");
   Serial.print(byteIndex,DEC);
-  Serial.print(" ");
+  Serial.print(" ");*/
   for (int i = 0;i <= byteIndex && i < BYTE_COUNT;++i) {
-    Serial.print(isrBytes[i],HEX);
+    printByte(isrBytes[i]);
     Serial.print(" ");
   }
+  //Serial.print(isrBytes[7],BIN);
+  //Serial.print(isrBytes[8],BIN);
+  //Serial.print(isrBytes[9],BIN);
   Serial.println();
 }
 
