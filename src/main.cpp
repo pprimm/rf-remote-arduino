@@ -23,11 +23,16 @@ volatile unsigned char bitCount = 0;
 /*******************************************************************************
  * ISR for input change event
 *******************************************************************************/
+// add byte msb first
+// isrBytes[byteIndex] |= bitLevel << (8 - bitIndex);
+// add byte lsb first
+// isrBytes[byteIndex] |= bitLevel << bitIndex;
+
 #define ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel) \
   ++bitCount;                                                  \
   byteIndex = bitCount / 8;                                    \
   bitIndex = bitCount % 8;                                     \
-  isrBytes[byteIndex] |= bitLevel << bitIndex;
+  isrBytes[byteIndex] |= bitLevel << (8 - bitIndex);
 
 volatile unsigned char input;
 volatile unsigned char bitLevel;
@@ -55,15 +60,15 @@ void inputChange()
       }
       break;
     case START:
+      ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
       if (tDiff < DT_T2) {
         state = END;
         break;
       }
-      ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
-      //isrBytes[byteIndex] |= bitLevel << (8 - bitIndex);
+      //ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
       break;
     case END:
-      ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
+      //ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
       state = START;
       break;
     case TEMP:
