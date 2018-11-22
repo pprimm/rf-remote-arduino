@@ -13,17 +13,16 @@
 #define DT_T3 1600
 #define BYTE_COUNT 10
 
-
 EthernetUDP udp;
 IPAddress broadcastAddress(255,255,255,255);
 const unsigned int UDP_PORT = 41794;
+uint8_t mac[6] = {0x0A,0x08,0x02,0x03,0x04,0x05};
 
 /**
  * Shared between ISR and loop()
  */
 volatile unsigned char state = IDLE;
 volatile unsigned char isrBytes[BYTE_COUNT];
-volatile unsigned char byteIndex = 0;
 volatile unsigned char bitCount = 0;
 /*******************************************************************************
  * ISR for input change event
@@ -45,6 +44,7 @@ volatile unsigned long oldTime;
 volatile unsigned long newTime;
 volatile unsigned long tDiff;
 volatile unsigned char bitIndex;
+volatile unsigned char byteIndex = 0;
 void inputChange()
 {
   input = digitalRead(INPUT_PIN);
@@ -91,11 +91,8 @@ void setup()
   pinMode(INPUT_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), inputChange, CHANGE);
 
-  uint8_t mac[6] = {0x0A,0x08,0x02,0x03,0x04,0x05};
-
   Ethernet.begin(mac);//,IPAddress(192,168,0,6));
   Serial.println(Ethernet.localIP());
-
 
   oldTime = micros();
 }
@@ -109,34 +106,32 @@ void printByte(unsigned char bytePrint) {
   //Serial.print(bytePrint);
 }
 
-void printButton()
+void printBytes(unsigned char const* bytes, int byteCount)
 {
-  for (int i = 0;i <= byteIndex && i < BYTE_COUNT;++i) {
-    printByte(isrBytes[i]);
+  for (int i = 0;i < byteCount;++i) {
+    printByte(bytes[i]);
     Serial.print(" ");
   }
   Serial.println();
 }
 
-unsigned char udpBytes[BYTE_COUNT];
-unsigned char udpBitCount;
+unsigned char showBytes[BYTE_COUNT];
+unsigned char showBitCount;
 void loop() 
 {
   if (state == TEMP) {
-    memcpy((void *)(udpBytes),(void *)(isrBytes),sizeof(isrBytes));
-    udpBitCount = bitCount;
+    showBitCount = bitCount;
+    memcpy(showBytes,(const void*)isrBytes,sizeof(isrBytes));
+    memset((void*)(isrBytes),0,sizeof(isrBytes));
     state = IDLE;
-  }    
+  }
 
-    //Serial.print(bitCount);
-    //Serial.print(" ");
-      //printButton();
-  if (udpBitCount == 77) {
-    udpBitCount = 0;
+  if (showBitCount == 77) {
+    showBitCount = 0;
+    printBytes(showBytes,sizeof(showBytes));
     if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
-      udp.write((const char*)(udpBytes),sizeof(udpBytes));
+      udp.write((const char*)(showBytes),sizeof(showBytes));
       udp.endPacket();
     }
   }
-  //delay(1);
 }
