@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <UIPEthernet.h>
 
 #define INPUT_PIN 3
 // ISR States
@@ -12,6 +13,10 @@
 #define DT_T3 1600
 #define BYTE_COUNT 10
 
+EthernetUDP udp;
+IPAddress broadcastAddress(255,255,255,255);
+const unsigned int UDP_PORT = 41794;
+uint8_t mac[6] = {0x0A,0x08,0x02,0x03,0x04,0x05};
 
 /**
  * Shared between ISR and loop()
@@ -85,6 +90,10 @@ void setup()
   Serial.println("Running");
   pinMode(INPUT_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), inputChange, CHANGE);
+
+  Ethernet.begin(mac);//,IPAddress(192,168,0,6));
+  Serial.println(Ethernet.localIP());
+
   oldTime = micros();
 }
 
@@ -120,5 +129,9 @@ void loop()
   if (showBitCount == 77) {
     showBitCount = 0;
     printBytes(showBytes,sizeof(showBytes));
+    if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
+      udp.write((const char*)(showBytes),sizeof(showBytes));
+      udp.endPacket();
+    }
   }
 }
