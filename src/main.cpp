@@ -1,6 +1,7 @@
 #include <Arduino.h>
+#include <UIPEthernet.h>
 
-#define INPUT_PIN 2
+#define INPUT_PIN 3
 // ISR States
 #define IDLE 0
 #define START 1
@@ -10,8 +11,12 @@
 #define DT_T1 300
 #define DT_T2 600
 #define DT_T3 1600
-#define BYTE_COUNT 12
+#define BYTE_COUNT 10
 
+
+EthernetUDP udp;
+IPAddress broadcastAddress(255,255,255,255);
+const unsigned int UDP_PORT = 41794;
 
 /**
  * Shared between ISR and loop()
@@ -47,7 +52,7 @@ void inputChange()
   newTime = micros();
   tDiff = newTime - oldTime;
   oldTime = newTime;
-  if (tDiff < DT_T1 && input == LOW) {
+  if ((tDiff < DT_T1 && input == LOW) || byteIndex >= BYTE_COUNT) {
     state = TEMP;
   }
   switch (state)
@@ -85,6 +90,13 @@ void setup()
   Serial.println("Running");
   pinMode(INPUT_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), inputChange, CHANGE);
+
+  uint8_t mac[6] = {0x0A,0x08,0x02,0x03,0x04,0x05};
+
+  Ethernet.begin(mac);//,IPAddress(192,168,0,6));
+  Serial.println(Ethernet.localIP());
+
+
   oldTime = micros();
 }
 
@@ -106,6 +118,7 @@ void printButton()
   Serial.println();
 }
 
+unsigned char udpBytes[BYTE_COUNT];
 void loop() 
 {
   if (state == TEMP) {
@@ -113,8 +126,13 @@ void loop()
     //Serial.print(" ");
     if (bitCount == 77) {
       printButton();
+      memcpy((void *)(udpBytes),(void *)(isrBytes),sizeof(isrBytes));
+      if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
+        udp.write((const char*)(udpBytes),sizeof(udpBytes));
+        udp.endPacket();
     }
-    memset((void*)(isrBytes),0,sizeof(isrBytes));
+    }
+    //memset((void*)(isrBytes),0,sizeof(isrBytes));
     state = IDLE;
   }
   delay(1);
