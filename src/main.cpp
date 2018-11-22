@@ -24,15 +24,15 @@ volatile unsigned char bitCount = 0;
  * ISR for input change event
 *******************************************************************************/
 // add byte msb first
-// isrBytes[byteIndex] |= bitLevel << (8 - bitIndex);
+// isrBytes[byteIndex] |= bitLevel << (7 - bitIndex);
 // add byte lsb first
 // isrBytes[byteIndex] |= bitLevel << bitIndex;
 
-#define ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel) \
-  ++bitCount;                                                  \
-  byteIndex = bitCount / 8;                                    \
-  bitIndex = bitCount % 8;                                     \
-  isrBytes[byteIndex] |= bitLevel << (8 - bitIndex);
+#define ADD_BIT(va,vb,vc,vd,ve) \
+  vb = va / 8;                  \
+  vc = va % 8;                  \
+  vd[vb] |= ve << (7-vc);       \
+  ++va;
 
 volatile unsigned char input;
 volatile unsigned char bitLevel;
@@ -43,7 +43,7 @@ volatile unsigned char bitIndex;
 void inputChange()
 {
   input = digitalRead(INPUT_PIN);
-  bitLevel = input == LOW ? 0x01 : 0x00;
+  bitLevel = input ? 0x01 : 0x00;
   newTime = micros();
   tDiff = newTime - oldTime;
   oldTime = newTime;
@@ -54,22 +54,25 @@ void inputChange()
   {
     case IDLE:
       if (tDiff > DT_T3 && input == HIGH) {
-        state = START;
+        state = END;
         bitCount = 0;
         byteIndex = 0;
       }
       break;
     case START:
-      ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
-      if (tDiff < DT_T2) {
-        state = END;
+      if (tDiff > DT_T2) {
+        state = TEMP;
         break;
       }
-      //ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
+      ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
+      state = END;
       break;
     case END:
-      //ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
-      state = START;
+      if (tDiff < DT_T2) {
+        state = START;
+        break;
+      }
+      ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
       break;
     case TEMP:
       break;
@@ -91,6 +94,7 @@ void printByte(unsigned char bytePrint) {
   //}
   Serial.print(bytePrint >> 4,HEX);
   Serial.print(bytePrint & 0x0F,HEX);
+  //Serial.print(bytePrint);
 }
 
 void printButton()
@@ -105,6 +109,8 @@ void printButton()
 void loop() 
 {
   if (state == TEMP) {
+    //Serial.print(bitCount);
+    //Serial.print(" ");
     if (bitCount == 77) {
       printButton();
     }
