@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define INPUT_PIN 2
+#define INPUT_PIN 3
 // ISR States
 #define IDLE 0
 #define START 1
@@ -10,7 +10,7 @@
 #define DT_T1 300
 #define DT_T2 600
 #define DT_T3 1600
-#define BYTE_COUNT 12
+#define BYTE_COUNT 10
 
 
 /**
@@ -18,7 +18,6 @@
  */
 volatile unsigned char state = IDLE;
 volatile unsigned char isrBytes[BYTE_COUNT];
-volatile unsigned char byteIndex = 0;
 volatile unsigned char bitCount = 0;
 /*******************************************************************************
  * ISR for input change event
@@ -40,6 +39,7 @@ volatile unsigned long oldTime;
 volatile unsigned long newTime;
 volatile unsigned long tDiff;
 volatile unsigned char bitIndex;
+volatile unsigned char byteIndex = 0;
 void inputChange()
 {
   input = digitalRead(INPUT_PIN);
@@ -47,7 +47,7 @@ void inputChange()
   newTime = micros();
   tDiff = newTime - oldTime;
   oldTime = newTime;
-  if (tDiff < DT_T1 && input == LOW) {
+  if ((tDiff < DT_T1 && input == LOW) || byteIndex >= BYTE_COUNT) {
     state = TEMP;
   }
   switch (state)
@@ -97,25 +97,28 @@ void printByte(unsigned char bytePrint) {
   //Serial.print(bytePrint);
 }
 
-void printButton()
+void printBytes(unsigned char const* bytes, int byteCount)
 {
-  for (int i = 0;i <= byteIndex && i < BYTE_COUNT;++i) {
-    printByte(isrBytes[i]);
+  for (int i = 0;i < byteCount;++i) {
+    printByte(bytes[i]);
     Serial.print(" ");
   }
   Serial.println();
 }
 
+unsigned char showBytes[BYTE_COUNT];
+unsigned char showBitCount;
 void loop() 
 {
   if (state == TEMP) {
-    //Serial.print(bitCount);
-    //Serial.print(" ");
-    if (bitCount == 77) {
-      printButton();
-    }
+    showBitCount = bitCount;
+    memcpy(showBytes,(const void*)isrBytes,sizeof(isrBytes));
     memset((void*)(isrBytes),0,sizeof(isrBytes));
     state = IDLE;
   }
-  delay(1);
+
+  if (showBitCount == 77) {
+    showBitCount = 0;
+    printBytes(showBytes,sizeof(showBytes));
+  }
 }
