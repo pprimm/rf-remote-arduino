@@ -119,21 +119,24 @@ void printButton()
 }
 
 unsigned char udpBytes[BYTE_COUNT];
+unsigned char udpBitCount;
 void loop() 
 {
   if (state == TEMP) {
+    memcpy((void *)(udpBytes),(void *)(isrBytes),sizeof(isrBytes));
+    udpBitCount = bitCount;
+    state = IDLE;
+  }    
+
     //Serial.print(bitCount);
     //Serial.print(" ");
-    if (bitCount == 77) {
-      printButton();
-      memcpy((void *)(udpBytes),(void *)(isrBytes),sizeof(isrBytes));
-      if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
-        udp.write((const char*)(udpBytes),sizeof(udpBytes));
-        udp.endPacket();
+      //printButton();
+  if (udpBitCount == 77) {
+    udpBitCount = 0;
+    if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
+      udp.write((const char*)(udpBytes),sizeof(udpBytes));
+      udp.endPacket();
     }
-    }
-    //memset((void*)(isrBytes),0,sizeof(isrBytes));
-    state = IDLE;
   }
-  delay(1);
+  //delay(1);
 }
