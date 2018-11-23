@@ -115,10 +115,10 @@ void printBytes(unsigned char const* bytes, int byteCount)
   Serial.println();
 }
 
-unsigned char showBytes[BYTE_COUNT];
-unsigned char showBitCount;
 void loop() 
 {
+  static unsigned char showBitCount;
+  static unsigned char showBytes[BYTE_COUNT];
   if (state == TEMP) {
     showBitCount = bitCount;
     memcpy(showBytes,(const void*)isrBytes,sizeof(isrBytes));
@@ -128,9 +128,15 @@ void loop()
 
   if (showBitCount == 77) {
     showBitCount = 0;
-    printBytes(showBytes,sizeof(showBytes));
+    //printBytes(showBytes,sizeof(showBytes));
+    unsigned int keyCode = 0x0;
+    keyCode |= (showBytes[7] & 0x07) << 11;
+    keyCode |= showBytes[8] << 3;
+    keyCode |= showBytes[9] >> 5;
+    Serial.println(keyCode,HEX);
     if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
-      udp.write((const char*)(showBytes),sizeof(showBytes));
+      udp.write((const uint8_t *)(&keyCode),sizeof(keyCode));
+      udp.write((const char*)(showBytes),sizeof(showBytes)-3);
       udp.endPacket();
     }
   }
