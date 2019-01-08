@@ -47,6 +47,9 @@ volatile unsigned char bitIndex;
 volatile unsigned char byteIndex = 0;
 void inputChange()
 {
+  /**
+   * TODO - Replace digitalRead() with fast method of reading input
+   */
   input = digitalRead(INPUT_PIN);
   bitLevel = input ? 0x01 : 0x00;
   newTime = micros();
