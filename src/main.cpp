@@ -4,9 +4,9 @@
 #define INPUT_PIN 3
 // ISR States
 #define IDLE 0
-#define START 1
-#define END 2
-#define TEMP 3
+#define STATE_A 1
+#define STATE_B 2
+#define WAIT 3
 // Bit stream timings
 #define DT_T1 300
 #define DT_T2 600
@@ -56,33 +56,29 @@ void inputChange()
   tDiff = newTime - oldTime;
   oldTime = newTime;
   if ((tDiff < DT_T1 && input == LOW) || byteIndex >= BYTE_COUNT) {
-    state = TEMP;
+    state = WAIT;
   }
   switch (state)
   {
     case IDLE:
       if (tDiff > DT_T3 && input == HIGH) {
-        state = END;
+        state = STATE_A;
         bitCount = 0;
         byteIndex = 0;
       }
       break;
-    case START:
-      if (tDiff > DT_T2) {
-        state = TEMP;
-        break;
-      }
+    case STATE_A:
       ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
-      state = END;
+      state = STATE_B;
       break;
-    case END:
+    case STATE_B:
       if (tDiff < DT_T2) {
-        state = START;
+        state = STATE_A;
         break;
       }
       ADD_BIT(bitCount,byteIndex,bitIndex,isrBytes,bitLevel)
       break;
-    case TEMP:
+    case WAIT:
       break;
   }
 }
@@ -122,7 +118,7 @@ void loop()
 {
   static unsigned char showBitCount;
   static unsigned char showBytes[BYTE_COUNT];
-  if (state == TEMP) {
+  if (state == WAIT) {
     showBitCount = bitCount;
     memcpy(showBytes,(const void*)isrBytes,sizeof(isrBytes));
     memset((void*)(isrBytes),0,sizeof(isrBytes));
@@ -136,10 +132,12 @@ void loop()
     keyCode |= (showBytes[7] & 0x07) << 11;
     keyCode |= showBytes[8] << 3;
     keyCode |= showBytes[9] >> 5;
+    Serial.print(bitCount);
+    Serial.print(" ");
     Serial.println(keyCode,HEX);
     if (udp.beginPacket(broadcastAddress,UDP_PORT)) {
       udp.write((const uint8_t *)(&keyCode),sizeof(keyCode));
-      udp.write((const char*)(showBytes),sizeof(showBytes)-3);
+      //udp.write((const char*)(showBytes),sizeof(showBytes)-3);
       udp.endPacket();
     }
   }
